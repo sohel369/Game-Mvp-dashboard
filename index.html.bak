@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyPicks - Transparent Pick'em on Base</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: transform 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); }
+        .btn-secondary { background: white; color: #667eea; border: 2px solid #667eea; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .match-card { border: 2px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+        .score-input { width: 60px; text-align: center; padding: 8px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 18px; font-weight: bold; }
+        .cart-item { background: #f9fafb; padding: 12px; border-radius: 8px; margin-bottom: 8px; }
+        .hidden { display: none; }
+        .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 32px; border-radius: 16px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .tab { padding: 12px 24px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; color: #6b7280; }
+        .tab.active { color: #667eea; border-bottom-color: #667eea; }
+        .prize-tier { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+        .navbar { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        .mask-address { font-family: monospace; font-size: 14px; }
+        input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="text-2xl font-bold gradient-bg bg-clip-text text-transparent">⚽ EasyPicks</div>
+            <div class="flex gap-4 items-center">
+                <button onclick="showPage('home')" class="text-gray-700 hover:text-purple-600">Home</button>
+                <button onclick="showPage('transparency')" class="text-gray-700 hover:text-purple-600">Transparency</button>
+                <button onclick="showPage('about')" class="text-gray-700 hover:text-purple-600">About</button>
+                <button id="walletBtn" onclick="connectWallet()" class="btn-primary text-sm">Connect Wallet</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Home Page -->
+    <div id="homePage" class="page">
+        <div class="gradient-bg text-white py-20">
+            <div class="max-w-4xl mx-auto px-4 text-center">
+                <h1 class="text-5xl font-bold mb-6">Predict. Win. Trust.</h1>
+                <p class="text-xl mb-8 opacity-90">The most transparent crypto pick'em platform on Base. Predict exact scores, win big prizes.</p>
+                <div class="flex gap-4 justify-center">
+                    <button onclick="connectWallet()" class="bg-white text-purple-600 px-8 py-4 rounded-lg font-bold text-lg hover:shadow-xl transition">Get Started</button>
+                    <button onclick="showPage('transparency')" class="border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white hover:text-purple-600 transition">View All Bets</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 py-16">
+            <div class="grid md:grid-cols-3 gap-8 mb-16">
+                <div class="card p-8 text-center">
+                    <div class="text-4xl mb-4">🎯</div>
+                    <h3 class="text-xl font-bold mb-2">Easy to Play</h3>
+                    <p class="text-gray-600">Pick exact scores for 6 matches. $10 per ticket. Buy multiple tickets with different picks.</p>
+                </div>
+                <div class="card p-8 text-center">
+                    <div class="text-4xl mb-4">🔒</div>
+                    <h3 class="text-xl font-bold mb-2">Fully Transparent</h3>
+                    <p class="text-gray-600">All bets, prizes, and withdrawals are public. See exactly where every USDC goes.</p>
+                </div>
+                <div class="card p-8 text-center">
+                    <div class="text-4xl mb-4">💰</div>
+                    <h3 class="text-xl font-bold mb-2">Big Prizes</h3>
+                    <p class="text-gray-600">90% prize pool. Score-based tiers. Jackpots roll over if no winner. Automated payouts.</p>
+                </div>
+            </div>
+
+            <div class="card p-8 mb-8">
+                <h2 class="text-3xl font-bold mb-6">This Week's Vault</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-purple-600">Prize Pool</h3>
+                        <div class="text-4xl font-bold mb-4">$<span id="prizePool">2,450</span></div>
+                        <div class="text-gray-600 mb-4"><span id="totalEntries">245</span> tickets entered</div>
+                        <div class="space-y-2">
+                            <div class="prize-tier">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold">🏆 60 Points (Perfect)</span>
+                                    <span class="text-2xl font-bold">$1,225</span>
+                                </div>
+                                <div class="text-sm opacity-90 mt-1">50% of pool + $200 rollover</div>
+                            </div>
+                            <div class="bg-gray-100 p-4 rounded-lg">
+                                <div class="flex justify-between"><span>⭐ 45-59 Points</span><span class="font-bold">$490</span></div>
+                            </div>
+                            <div class="bg-gray-100 p-4 rounded-lg">
+                                <div class="flex justify-between"><span>🎯 30-44 Points</span><span class="font-bold">$367</span></div>
+                            </div>
+                            <div class="bg-gray-100 p-4 rounded-lg">
+                                <div class="flex justify-between"><span>✓ 20-29 Points</span><span class="font-bold">$122</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-4">Upcoming Matches</h3>
+                        <div id="upcomingMatches" class="space-y-3"></div>
+                        <button onclick="showPage('betting')" class="btn-primary w-full mt-6">Make Your Picks</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Betting Page -->
+    <div id="bettingPage" class="page hidden">
+        <div class="max-w-5xl mx-auto px-4 py-8">
+            <div class="mb-6">
+                <button onclick="showPage('home')" class="text-purple-600 font-semibold">← Back to Home</button>
+            </div>
+            
+            <div class="card p-8 mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">Make Your Picks</h2>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-600">Your Balance</div>
+                        <div class="text-2xl font-bold text-purple-600">$<span id="userBalance">0.00</span></div>
+                    </div>
+                </div>
+
+                <div id="matchesContainer"></div>
+
+                <div class="mt-8 pt-6 border-t">
+                    <div class="flex items-center gap-4 mb-4">
+                        <label class="font-semibold">Number of tickets with these picks:</label>
+                        <input type="number" id="ticketQuantity" min="1" max="1000" value="1" class="score-input w-24">
+                        <span class="text-gray-600">× $10 = $<span id="selectionCost">10</span></span>
+                    </div>
+                    <button onclick="addToCart()" class="btn-primary">Add to Cart</button>
+                </div>
+            </div>
+
+            <div class="card p-8">
+                <h3 class="text-2xl font-bold mb-4">Cart (<span id="cartCount">0</span> selections)</h3>
+                <div id="cartItems" class="mb-6"></div>
+                <div class="flex justify-between items-center pt-4 border-t">
+                    <div class="text-2xl font-bold">Total: $<span id="cartTotal">0</span></div>
+                    <button onclick="confirmBets()" class="btn-primary text-lg">Confirm Bets</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transparency Page -->
+    <div id="transparencyPage" class="page hidden">
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <h1 class="text-4xl font-bold mb-8">Transparency Hub</h1>
+            
+            <div class="card p-2 mb-8">
+                <div class="flex border-b">
+                    <div class="tab active" onclick="switchTransparencyTab('allBets')">All Bets</div>
+                    <div class="tab" onclick="switchTransparencyTab('prizes')">Prize Credits</div>
+                    <div class="tab" onclick="switchTransparencyTab('withdrawals')">Withdrawals</div>
+                </div>
+            </div>
+
+            <div id="allBetsTab" class="transparency-tab">
+                <div class="card p-6">
+                    <h2 class="text-2xl font-bold mb-4">All Bets</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">Date</th>
+                                    <th class="px-4 py-3 text-left">Wallet</th>
+                                    <th class="px-4 py-3 text-left">Tickets</th>
+                                    <th class="px-4 py-3 text-left">Entry</th>
+                                    <th class="px-4 py-3 text-left">Score</th>
+                                    <th class="px-4 py-3 text-left">Prize</th>
+                                    <th class="px-4 py-3 text-left">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allBetsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="prizesTab" class="transparency-tab hidden">
+                <div class="card p-6">
+                    <h2 class="text-2xl font-bold mb-4">Prize Credits</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">Date</th>
+                                    <th class="px-4 py-3 text-left">Wallet</th>
+                                    <th class="px-4 py-3 text-left">Prize Amount</th>
+                                    <th class="px-4 py-3 text-left">Tier</th>
+                                    <th class="px-4 py-3 text-left">Winning Tickets</th>
+                                    <th class="px-4 py-3 text-left">Round</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prizesTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="withdrawalsTab" class="transparency-tab hidden">
+                <div class="card p-6">
+                    <h2 class="text-2xl font-bold mb-4">Withdrawals</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">Date</th>
+                                    <th class="px-4 py-3 text-left">Wallet</th>
+                                    <th class="px-4 py-3 text-left">Amount</th>
+                                    <th class="px-4 py-3 text-left">Transaction</th>
+                                </tr>
+                            </thead>
+                            <tbody id="withdrawalsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Page -->
+    <div id="dashboardPage" class="page hidden">
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <h1 class="text-4xl font-bold mb-8">My Dashboard</h1>
+            
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <div class="card p-6">
+                    <div class="text-gray-600 mb-2">Current Balance</div>
+                    <div class="text-3xl font-bold text-purple-600">$<span id="dashBalance">0.00</span></div>
+                    <button onclick="showWithdrawModal()" class="btn-secondary w-full mt-4">Withdraw</button>
+                </div>
+                <div class="card p-6">
+                    <div class="text-gray-600 mb-2">Total Wagered</div>
+                    <div class="text-3xl font-bold">$<span id="totalWagered">0</span></div>
+                </div>
+                <div class="card p-6">
+                    <div class="text-gray-600 mb-2">Total Prizes Won</div>
+                    <div class="text-3xl font-bold text-green-600">$<span id="totalPrizes">0</span></div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-4">Score Performance</h3>
+                    <canvas id="scoreChart"></canvas>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-bold mb-4">Statistics</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Lifetime Score</span>
+                            <span class="font-bold"><span id="lifetimeScore">0</span> pts</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">2026 Score</span>
+                            <span class="font-bold"><span id="yearScore">0</span> pts</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Win Rate</span>
+                            <span class="font-bold"><span id="winRate">0</span>%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Active Tickets</span>
+                            <span class="font-bold"><span id="activeTickets">0</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6 mb-8">
+                <h3 class="text-xl font-bold mb-4">Referral Program</h3>
+                <div class="bg-purple-50 p-4 rounded-lg mb-4">
+                    <div class="text-sm text-gray-600 mb-2">Your Referral Link</div>
+                    <div class="flex gap-2">
+                        <input type="text" id="referralLink" value="https://easypicks.io/?ref=ABC123" readonly class="flex-1 px-4 py-2 border-2 border-purple-300 rounded-lg">
+                        <button onclick="copyReferral()" class="btn-primary">Copy</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-gray-600">Successful Referrals</div>
+                        <div class="text-2xl font-bold"><span id="referralCount">0</span> / 40</div>
+                    </div>
+                    <div>
+                        <div class="text-gray-600">Referral Earnings</div>
+                        <div class="text-2xl font-bold text-green-600">$<span id="referralEarnings">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <h3 class="text-xl font-bold mb-4">Past Tickets</h3>
+                <div id="pastTickets"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Page -->
+    <div id="aboutPage" class="page hidden">
+        <div class="max-w-4xl mx-auto px-4 py-16">
+            <h1 class="text-5xl font-bold mb-8">About EasyPicks</h1>
+            
+            <div class="card p-8 mb-8">
+                <h2 class="text-2xl font-bold mb-4">Our Mission</h2>
+                <p class="text-lg text-gray-700 mb-4">EasyPicks is building the most transparent and trustworthy crypto sports prediction platform. We believe in complete transparency - every bet, every prize, every withdrawal is public and verifiable on-chain.</p>
+                <p class="text-lg text-gray-700">Built on Base, powered by USDC, secured by the community.</p>
+            </div>
+
+            <div class="card p-8 mb-8">
+                <h2 class="text-2xl font-bold mb-4">Core Values</h2>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-purple-600 mb-2">🎯 Easy</h3>
+                        <p class="text-gray-700">Quick and intuitive gameplay. No complex rules. Just predict scores and win.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-purple-600 mb-2">🔒 Secure</h3>
+                        <p class="text-gray-700">Public multisig wallet, internal balance system, automated prize credits.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-purple-600 mb-2">👁️ Transparent</h3>
+                        <p class="text-gray-700">Every transaction is public. See all bets, prizes, and withdrawals in real-time.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-8 mb-8">
+                <h2 class="text-2xl font-bold mb-4">Roadmap</h2>
+                <div class="space-y-3">
+                    <div class="flex gap-4">
+                        <div class="text-green-500 font-bold">✓</div>
+                        <div>
+                            <div class="font-bold">Q1 2026 - MVP Launch</div>
+                            <div class="text-gray-600">Weekly football vault, Base/USDC support</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="text-purple-500 font-bold">→</div>
+                        <div>
+                            <div class="font-bold">Q2 2026 - Multi-Sport Expansion</div>
+                            <div class="text-gray-600">Basketball, American football, baseball vaults</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="text-gray-400 font-bold">○</div>
+                        <div>
+                            <div class="font-bold">Q3 2026 - Advanced Features</div>
+                            <div class="text-gray-600">Special event vaults, higher stakes options, DAO governance</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-8">
+                <h2 class="text-2xl font-bold mb-4">Community</h2>
+                <div class="flex gap-4">
+                    <button class="btn-primary">Join Discord</button>
+                    <button class="btn-secondary">Follow on X</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div id="depositModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Deposit USDC</h2>
+            <p class="text-gray-600 mb-4">Send USDC on Base network to this address. Minimum deposit: $10</p>
+            
+            <div class="bg-gray-100 p-4 rounded-lg mb-4 text-center">
+                <div class="text-4xl mb-2">📱</div>
+                <div class="text-sm text-gray-600 mb-2">Public Wallet Address</div>
+                <div class="font-mono text-sm bg-white p-3 rounded break-all">0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb</div>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                <div class="text-sm text-gray-700">⚡ Deposits are automatically detected and credited to your balance within 1-2 minutes.</div>
+            </div>
+
+            <button onclick="closeModal('depositModal')" class="btn-primary w-full">Close</button>
+        </div>
+    </div>
+
+    <!-- Withdraw Modal -->
+    <div id="withdrawModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Request Withdrawal</h2>
+            <p class="text-gray-600 mb-4">Minimum withdrawal: $10. Processed manually within 24 hours.</p>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-2">Available Balance</label>
+                <div class="text-3xl font-bold text-purple-600 mb-4">$<span id="withdrawBalance">0.00</span></div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-2">Withdrawal Amount ($)</label>
+                <input type="number" id="withdrawAmount" min="10" step="1" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-lg" placeholder="10">
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-semibold mb-2">Destination Address (Base)</label>
+                <input type="text" id="withdrawAddress" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg font-mono text-sm" placeholder="0x...">
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="submitWithdrawal()" class="btn-primary flex-1">Submit Request</button>
+                <button onclick="closeModal('withdrawModal')" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let state = {
+            connected: false,
+            walletAddress: null,
+            balance: 125.50,
+            cart: [],
+            currentPicks: {},
+            matches: [
+                { id: 1, home: 'Manchester City', away: 'Liverpool', date: 'Jan 5, 15:00' },
+                { id: 2, home: 'Arsenal', away: 'Chelsea', date: 'Jan 5, 17:30' },
+                { id: 3, home: 'Barcelona', away: 'Real Madrid', date: 'Jan 6, 20:00' },
+                { id: 4, home: 'Bayern Munich', away: 'Dortmund', date: 'Jan 6, 18:30' },
+                { id: 5, home: 'PSG', away: 'Marseille', date: 'Jan 7, 21:00' },
+                { id: 6, home: 'Inter Milan', away: 'Juventus', date: 'Jan 7, 19:45' }
+            ],
+            bets: [
+                { wallet: '0x742d...5f0bEb', tickets: 5, entry: 50, score: 42, prize: 75, date: 'Dec 28, 2025', picks: [
+                    {home: 'Man City', away: 'Liverpool', homeScore: 2, awayScore: 1},
+                    {home: 'Arsenal', away: 'Chelsea', homeScore: 3, awayScore: 2},
+                    {home: 'Barcelona', away: 'Real Madrid', homeScore: 1, awayScore: 1},
+                    {home: 'Bayern', away: 'Dortmund', homeScore: 4, awayScore: 0},
+                    {home: 'PSG', away: 'Marseille', homeScore: 2, awayScore: 2},
+                    {home: 'Inter', away: 'Juventus', homeScore: 1, awayScore: 0}
+                ]},
+                { wallet: '0x8f3e...2a9cDf', tickets: 3, entry: 30, score: 55, prize: 180, date: 'Dec 28, 2025', picks: [] },
+                { wallet: '0x1a5b...7e4fAa', tickets: 10, entry: 100, score: 38, prize: 60, date: 'Dec 27, 2025', picks: [] },
+                { wallet: '0x9c7d...3b8eEb', tickets: 2, entry: 20, score: 25, prize: 15, date: 'Dec 27, 2025', picks: [] },
+                { wallet: '0x4e2f...6d1cBb', tickets: 8, entry: 80, score: 48, prize: 245, date: 'Dec 26, 2025', picks: [] }
+            ],
+            prizes: [
+                { wallet: '0x8f3e...2a9cDf', amount: 180, tier: '45-59 pts', tickets: 3, date: 'Dec 29, 2025', round: 'Week 52' },
+                { wallet: '0x4e2f...6d1cBb', amount: 245, tier: '45-59 pts', tickets: 8, date: 'Dec 27, 2025', round: 'Week 51' },
+                { wallet: '0x742d...5f0bEb', amount: 75, tier: '30-44 pts', tickets: 5, date: 'Dec 29, 2025', round: 'Week 52' }
+            ],
+            withdrawals: [
+                { wallet: '0x8f3e...2a9cDf', amount: 150, tx: '0x7a8f...3c2d', date: 'Dec 30, 2025' },
+                { wallet: '0x1a5b...7e4fAa', amount: 50, tx: '0x9b4e...7f1a', date: 'Dec 28, 2025' }
+            ],
+            userStats: {
+                totalWagered: 320,
+                totalPrizes: 485,

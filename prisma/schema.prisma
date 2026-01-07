@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  walletAddress String    @unique
+  balance       Float     @default(0.0)
+  role          String    @default("USER") // USER, ADMIN
+  referralCode  String    @unique @default(uuid())
+  referredBy    String?
+  createdAt     DateTime  @default(now())
+  
+  transactions  Transaction[]
+  bets          Bet[]
+  tickets       Ticket[]
+  withdrawals   Withdrawal[]
+  referrals     Referral[]
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  type        String   // DEPOSIT, WITHDRAWAL, BET_PLACED, PRIZE_WIN, REFERRAL_BONUS
+  amount      Float
+  txHash      String?  // For deposits/withdrawals, might not be unique globally if failed retry, keeping loose
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Withdrawal {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  status    String   // PENDING, APPROVED, REJECTED, COMPLETED
+  txHash    String?
+  createdAt DateTime @default(now())
+}
+
+model Round {
+  id          String   @id @default(uuid())
+  name        String
+  vaultName   String   @default("Weekly Main Vault")
+  status      String   // OPEN, LOCKED, FINALIZED
+  startDate   DateTime
+  endDate     DateTime
+  
+  // Prize pool tracking
+  totalEntries    Float @default(0.0)
+  rakeAmount      Float @default(0.0)
+  prizePool       Float @default(0.0)
+  rolloverAmount  Float @default(0.0)
+  
+  // Vault configuration (JSON strings)
+  prizeConfig     String? // JSON: tier percentages
+  scoringConfig   String? // JSON: point values
+  
+  matches   Match[]
+  bets      Bet[]
+}
+
+model Match {
+  id        String   @id @default(uuid())
+  roundId   String
+  round     Round    @relation(fields: [roundId], references: [id])
+  homeTeam  String
+  awayTeam  String
+  startTime DateTime
+  homeScore Int?
+  awayScore Int?
+  status    String   // SCHEDULED, LIVE, FINISHED
+}
+
+model Bet {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  roundId     String
+  round       Round    @relation(fields: [roundId], references: [id])
+  quantity    Int      @default(1) // Number of tickets with same picks
+  predictions String   // JSON string of matchId -> { home, away }
+  totalAmount Float    // quantity * 10
+  createdAt   DateTime @default(now())
+  
+  tickets     Ticket[]
+}
+
+model Ticket {
+  id          String   @id @default(uuid())
+  betId       String
+  bet         Bet      @relation(fields: [betId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  roundId     String
+  predictions String   // Same as parent bet
+  score       Int      @default(0)
+  tier        String?  // Prize tier won (if any)
+  payout      Float    @default(0.0)
+  status      String   @default("PENDING") // PENDING, SCORED, WON, LOST
+  createdAt   DateTime @default(now())
+}
+
+model Referral {
+  id              String   @id @default(uuid())
+  referrerId      String
+  referrer        User     @relation(fields: [referrerId], references: [id])
+  referredAddress String
+  bonusAmount     Float    @default(5.0)
+  status          String   @default("PENDING") // PENDING, QUALIFIED, PAID
+  qualifyingBetId String?
+  createdAt       DateTime @default(now())
+}
+
+
+model SystemSetting {
+  key   String @id
+  value String
+}

@@ -8,6 +8,8 @@ const nextConfig = {
         '@web3modal/ui',
         '@web3modal/core',
         '@web3modal/base', // Fix: Added missing module
+        '@walletconnect/ethereum-provider', // Fix: Added missing module
+        '@walletconnect/utils', // Fix: Added missing module
         'lit',
         '@lit/react',
         'lit-html',
